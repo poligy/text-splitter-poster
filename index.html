@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Splitter and Poster</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea, input {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button {
+            margin-right: 10px;
+        }
+        #preview {
+            white-space: pre-wrap;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Text Splitter and Poster</h1>
+    <textarea id="input" rows="10" placeholder="输入您的想法..."></textarea>
+    <input type="text" id="tag" placeholder="输入标签，例如：#Book/蒋介石与现代中国">
+    <button onclick="previewText()">预览</button>
+    <button onclick="submitText()">提交</button>
+    <div id="preview"></div>
+
+    <script>
+    function splitText(text, tag) {
+        // 去除书名和作者名段落
+        text = text.replace(/《.*?》\n\n.*?\n\d+个笔记\n\n/, '');
+        
+        // 分割文本成段落并处理
+        const paragraphs = text.split(/(?=第.*?章.*?|◆ \d{4}\/\d{2}\/\d{2}发表想法)/).map(paragraph => {
+            paragraph = paragraph.trim();
+            if (paragraph.startsWith('◆')) {
+                const [_, date, idea, content] = paragraph.match(/◆ (\d{4}\/\d{2}\/\d{2})发表想法\n\n(.*?)\n\n原文：(.*)/s);
+                return `${tag}\n\n想法：${idea.trim()}\n--------\n原文：${content.trim()}`;
+            }
+            return null;
+        }).filter(paragraph => paragraph !== null);
+        
+        return paragraphs;
+    }
+
+    function postParagraphs(paragraphs, url) {
+        paragraphs.forEach(paragraph => {
+            const data = { content: paragraph };
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => console.log('Success:', data))
+            .catch((error) => console.error('Error:', error));
+        });
+    }
+
+    function previewText() {
+        const input = document.getElementById('input').value;
+        const tag = document.getElementById('tag').value;
+        const paragraphs = splitText(input, tag);
+        const previewContent = paragraphs.map((p, i) => `段落 ${i + 1}:\n${p}`).join('\n\n');
+        document.getElementById('preview').textContent = `总共分割成 ${paragraphs.length} 段：\n\n${previewContent}`;
+    }
+
+    function submitText() {
+        const input = document.getElementById('input').value;
+        const tag = document.getElementById('tag').value;
+        const paragraphs = splitText(input, tag);
+        const url = 'https://flomoapp.com/iwh/MjY0/2c49794caa32e5bb0f9aff2bc91f797b/';
+        postParagraphs(paragraphs, url);
+        alert('提交成功！');
+    }
+    </script>
+</body>
+</html>
